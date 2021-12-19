@@ -21,7 +21,7 @@ public:
 	~Framebuffer();
 
 	void Use();
-	void Clear(glm::vec4 clearColor = glm::vec4(0, 0, 0, 1));
+	void Clear(glm::vec3 clearColor = glm::vec3(0, 0, 0));
 	void Display(unsigned int textureID = NULL);
 
 	void ReloadShader();
@@ -29,9 +29,11 @@ public:
 
 	glm::uvec2 fbSize;
 
-	Shader* shaderPtr = nullptr;
+	float gamma = 2.0f;
+	float exposure = 1.0f;
 
 private:
+	// Vertex Array, Vertex Buffer
 	unsigned int quadVAO, quadVBO;
 	
 	// Multisampled Objects
@@ -39,7 +41,7 @@ private:
 	unsigned int colorTextureMSAA;
 	unsigned int rbo;
 
-	// Singlesampled Objects
+	// Non-sampled Objects
 	unsigned int intermediateFBO;
 	unsigned int screenTexture;
 };

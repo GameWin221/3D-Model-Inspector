@@ -70,7 +70,7 @@ void Model::Update()
 	this->transform = glm::rotate(this->transform, glm::radians(this->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 	this->transform = glm::scale(this->transform, this->scale);
 }
-void Model::Render(Camera& target_camera)
+void Model::Render(Camera* target_camera)
 {
 	int windowWidth, windowHeight;
 
@@ -82,11 +82,11 @@ void Model::Render(Camera& target_camera)
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
 
 	this->material->shader->Use();
-	this->material->shader->SetMatrix4("projection", target_camera.GetProjectionMatrix(windowWidth, windowHeight));
-	this->material->shader->SetMatrix4("view", target_camera.GetViewMatrix());
+	this->material->shader->SetMatrix4("projection", target_camera->GetProjectionMatrix(windowWidth, windowHeight));
+	this->material->shader->SetMatrix4("view", target_camera->GetViewMatrix());
 	this->material->shader->SetMatrix4("model", this->transform);
 
-	this->material->shader->SetVec3("viewPos", target_camera.position);
+	this->material->shader->SetVec3("viewPos", target_camera->position);
 		
 	this->material->shader->SetVec3("material.color", this->material->color);
 	this->material->shader->SetFloat("material.specular", this->material->specular);
@@ -112,7 +112,7 @@ void Model::Render(Camera& target_camera)
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-void Model::RenderAsShadowmap(DirLight& source_light, glm::mat4& lSpaceMatrix)
+void Model::RenderAsShadowmap(DirLight* source_light, glm::mat4& lSpaceMatrix)
 {
 	int windowWidth, windowHeight;
 

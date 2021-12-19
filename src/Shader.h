@@ -36,5 +36,9 @@ public:
     void SetVec2   (const std::string& name, glm::vec2 value) const;
 
     int GetUniformPos(const std::string& name);
+    bool IsLoaded();
+
+private:
+    bool loaded = false;
 };
 #endif

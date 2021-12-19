@@ -1,7 +1,6 @@
 #include "Framebuffer.h"
 
-Shader* screenShader;
-bool shaderLoaded = false;
+Shader* screenShader = nullptr;
 
 float quadVertices[] = {
 	// Positions   // TexCoords
@@ -17,13 +16,8 @@ float quadVertices[] = {
 Framebuffer::Framebuffer(glm::uvec2 size)
 {
 	// Load the main shader if it wasn't loaded yet
-	if (!shaderLoaded)
-	{
+	if (screenShader == nullptr)
 		screenShader = new Shader("Shaders/vertex_framebuffer.glsl", "Shaders/fragment_framebuffer.glsl");
-		shaderLoaded = true;
-	}
-
-	this->shaderPtr = screenShader;
 
 	// Creating the VAO and VBO for the framebuffer
 	glGenVertexArrays(1, &this->quadVAO);
@@ -31,7 +25,6 @@ Framebuffer::Framebuffer(glm::uvec2 size)
 
 	glBindVertexArray(this->quadVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, this->quadVBO);
-
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
 
 	glEnableVertexAttribArray(0);
@@ -107,10 +100,10 @@ void Framebuffer::Use()
 	glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffer);
 	glEnable(GL_DEPTH_TEST);
 }
-void Framebuffer::Clear(glm::vec4 clearColor)
+void Framebuffer::Clear(glm::vec3 clearColor)
 {
 	// Clear the framebuffer's content (color, depth, stencils)
-	glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+	glClearColor(clearColor.x, clearColor.y, clearColor.z, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 }
 void Framebuffer::Display(unsigned int textureID)
@@ -124,7 +117,7 @@ void Framebuffer::Display(unsigned int textureID)
 		h = this->fbSize.y;
 
 	glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
+	
 	// Unbinding the GL_FRAMEBUFFER in order to render the screenTexture to the main window
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -133,8 +126,10 @@ void Framebuffer::Display(unsigned int textureID)
 
 	// Rendering the screenTexture
 	screenShader->Use();
-	glBindVertexArray(quadVAO);
+	screenShader->SetFloat("gamma", this->gamma);
+	screenShader->SetFloat("exposure", this->exposure);
 
+	glBindVertexArray(quadVAO);
 	glActiveTexture(GL_TEXTURE0);
 
 	if(textureID == NULL)
@@ -143,7 +138,6 @@ void Framebuffer::Display(unsigned int textureID)
 		glBindTexture(GL_TEXTURE_2D, textureID);
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
-
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 // -----------

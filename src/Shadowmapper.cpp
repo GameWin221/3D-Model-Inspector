@@ -2,61 +2,95 @@
 
 namespace Shadowmapper
 {
-	glm::uvec2 shadowmapResolution;
-	unsigned int depthFBO, depthTex;
+	float shadowMapResolution;
+	unsigned int depthMapFBO;
+	unsigned int depthMap[MAXLIGHTS];
 	const float near_plane = 1.0f, far_plane = 7.5f;
+	float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
 
-	void Init(unsigned int resolution)
+	bool shadows = true;
+
+	void EnableShadows()
 	{
-		shadowmapResolution = glm::uvec2(resolution);
+		shadows = true;
+	}
 
-		// Shadowmap FBO
-		glGenFramebuffers(1, &depthFBO);
+	void DisableShadows()
+	{
+		shadows = false;
+	}
 
-		// Shadowmap depth texture
-		glGenTextures(1, &depthTex);
-		glBindTexture(GL_TEXTURE_2D, depthTex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, shadowmapResolution.x, shadowmapResolution.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	void GenShadowmaps(unsigned int resolution)
+	{
+		shadowMapResolution = resolution;
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glGenFramebuffers(1, &depthMapFBO);
+		// Create depth textures
+		for (int i = 0; i < MAXLIGHTS; i++)
+		{
+			glGenTextures(1, &depthMap[i]);
+			glBindTexture(GL_TEXTURE_2D, depthMap[i]);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, resolution, resolution, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+			glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+		}
 
-		// Attaching the depth texture to the FBO
-		glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTex, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 		glDrawBuffer(GL_NONE);
 		glReadBuffer(GL_NONE);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	void Use()
+	void RenderShadowmaps(std::array<DirLight*, MAXLIGHTS> lightsArr, Shader* mainShader, Model* targetModel)
 	{
-		glViewport(0, 0, shadowmapResolution.x, shadowmapResolution.y);
-		glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
-		glClear(GL_DEPTH_BUFFER_BIT);
-	}
+		if (shadows)
+		{
+			int wX, wY;
+			glfwGetFramebufferSize(glfwGetCurrentContext(), &wX, &wY);
 
-	void CalculateShadows(DirLight* light, Shader* depth_shader)
-	{
-		//for (int i = 0; i < MAXLIGHTS; i++)
-		//{
-			glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+			for (int i = 0; i < MAXLIGHTS; i++)
+			{
+				glm::mat4 lightSpaceMatrix, lightProjection, lightView;
+				float near_plane = 0.5f, far_plane = 9.0f;
+				lightProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, near_plane, far_plane);
+				lightView = glm::lookAt(lightsArr[i]->direction * 5.0f, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+				lightSpaceMatrix = lightProjection * lightView;
 
-			//mozliwe ze musi byc -direction zamiast direction
-			glm::mat4 lightView = glm::lookAt(light->direction,
-				glm::vec3(0.0f, 0.0f, 0.0f),
-				glm::vec3(0.0f, 1.0f, 0.0f));
+				glEnable(GL_DEPTH_TEST);
 
-			glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+				glViewport(0, 0, shadowMapResolution, shadowMapResolution);
+				glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap[i], 0);
+				glClear(GL_DEPTH_BUFFER_BIT);
+				glActiveTexture(GL_TEXTURE0);
 
-			depth_shader->Use();
-			depth_shader->SetInt("shadowMap", 0);
-			depth_shader->SetMatrix4("lightSpaceMatrix", lightSpaceMatrix);
+				if (targetModel != nullptr)
+				{
+					targetModel->Update();
+					targetModel->RenderAsShadowmap(lightsArr[i], lightSpaceMatrix);
+				}
 
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, depthTex);
-		//}
+				mainShader->Use();
+				mainShader->SetMatrix4("lightSpaceMatrix[" + std::to_string(i) + "]", lightSpaceMatrix);
+				mainShader->SetInt("shadowMap[" + std::to_string(i) + "]", 3 + i);
+				mainShader->SetInt("shadows", 1);
+
+				glActiveTexture(GL_TEXTURE3 + i);
+				glBindTexture(GL_TEXTURE_2D, depthMap[i]);
+			}
+
+			// Reset viewport
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glViewport(0, 0, wX, wY);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		}
+		else
+		{
+			mainShader->Use();
+			mainShader->SetInt("shadows", 0);
+		}
 	}
 }

@@ -32,8 +32,8 @@ public:
 	glm::mat4 transform;
 
 	void Update();
-	void Render(Camera& target_camera);
-	void RenderAsShadowmap(DirLight& source_light, glm::mat4& lSpaceMatrix);
+	void Render(Camera* target_camera);
+	void RenderAsShadowmap(DirLight* source_light, glm::mat4& lSpaceMatrix);
 
 	Material* material;
 

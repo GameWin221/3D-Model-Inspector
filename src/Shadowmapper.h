@@ -7,6 +7,7 @@
 
 #include "Light.h"
 #include "Model.h"
+#include "Light.h"
 #include "Shader.h"
 
 #include <glm.hpp>
@@ -14,13 +15,13 @@
 #include <glew.h>
 #include <glfw3.h>
 
-#include <vector>
+#include <array>
 
 namespace Shadowmapper
 {
-	void Init(unsigned int resolution);
-
-	void Use();
-	//void CalculateShadows(DirLight* light, Shader* depth_shader);
+	void EnableShadows();
+	void DisableShadows();
+	void GenShadowmaps(unsigned int resolution);
+	void RenderShadowmaps(std::array<DirLight*, MAXLIGHTS> lightsArr, Shader* mainShader, Model* targetModel);
 };
 #endif

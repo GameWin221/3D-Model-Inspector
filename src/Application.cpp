@@ -5,26 +5,19 @@ namespace Application
 	glm::ivec2 windowSize(1920, 1080);
 
 	GLFWwindow* window = nullptr;
-
 	Camera* camera = nullptr;
-
 	Framebuffer* fb = nullptr;
 
-	// Set MAXLIGHTS in the "fragment_core_shaded.glsl" and "Shadowmapper.h" to the same value as here
+	// Set MAXLIGHTS in the "fragment_core_shaded.glsl", "vertex_core_shaded.glsl" and "Shadowmapper.h" to the same value as here
 	#define MAXLIGHTS 3
-	//#define SHADOWMAP_RES 1024
+	std::array<DirLight*, MAXLIGHTS> lights;
 
-
-	DirLight* lights[MAXLIGHTS];
 	int activatedLights = 1;
 
-	const float dLightYDir = 0.1f;
-
-	Texture* albe_texture = nullptr;
-	Texture* spec_texture = nullptr;
+	Texture* albedoTexture = nullptr;
+	Texture* specularTexture = nullptr;
 
 	Shader* shader = nullptr;
-
 	Material* material = nullptr;
 	Model* model = nullptr;
 
@@ -34,29 +27,19 @@ namespace Application
 	float modelRotation[3];
 	float modelPosition[3];
 	float modelScale[3] = { 1, 1, 1 };
+	float modelColor[3] = { 1, 1, 1 };
 
 	float aLightColor[3] = { 0.1f, 0.1f, 0.1f };
-	const float aLightIntensity = 0.75f;
-
-	bool shadows = true;
-	const unsigned int SHADOW_SIZE = 1024;
-	unsigned int depthMapFBO;
-	unsigned int depthMap;
-	float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
 
 	void Init()
 	{
-		window = InitGL();
-		InitImGui(window);
+		InitGL();
+		InitImGui();
 
 		camera = new Camera(glm::vec3(0.0f, 0.0f, 2.0f));
-
 		shader = new Shader("Shaders/vertex_core_shaded.glsl", "Shaders/fragment_core_shaded.glsl");
-
 		material = new Material(shader, nullptr, nullptr);
 		fb = new Framebuffer(windowSize);
-
-		//Shadowmapper::Init(SHADOWMAP_RES);
 
 		for (int i = 0; i < MAXLIGHTS; i++)
 		{
@@ -65,23 +48,7 @@ namespace Application
 		}
 		lights[0]->active = true;
 
-		glGenFramebuffers(1, &depthMapFBO);
-		// create depth texture
-		glGenTextures(1, &depthMap);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_SIZE, SHADOW_SIZE, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-		// attach depth texture as FBO's depth buffer
-		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-		glDrawBuffer(GL_NONE);
-		glReadBuffer(GL_NONE);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+		Shadowmapper::GenShadowmaps(2048);
 	}
 
 	void Update()
@@ -89,7 +56,7 @@ namespace Application
 		deltaTime = 1.0 / ImGui::GetIO().Framerate;
 
 		// Input
-		processInput(window, *camera, deltaTime);
+		ProcessWindowInput();
 		glfwPollEvents();
 
 		if (model != nullptr)
@@ -97,74 +64,37 @@ namespace Application
 			model->position = glm::vec3(modelPosition[0], modelPosition[1], modelPosition[2]);
 			model->rotation = glm::vec3(modelRotation[0], modelRotation[1], modelRotation[2]);
 			model->scale = glm::vec3(modelScale[0], modelScale[1], modelScale[2]);
+			model->material->color = glm::vec3(modelColor[0], modelColor[1], modelColor[2]);
 		}
 	}
 
 	void Render()
 	{
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		// Cast shadows (render shadowmaps)
+		Shadowmapper::RenderShadowmaps(lights, shader, model);
 
-		glm::mat4 lightSpaceMatrix;
-		if (shadows)
-		{
-			glm::mat4 lightProjection, lightView;
-			float near_plane = 1.0f, far_plane = 7.5f;
-			lightProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, near_plane, far_plane);
-			lightView = glm::lookAt(lights[0]->direction * 5.0f, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
-			lightSpaceMatrix = lightProjection * lightView;
-
-			glEnable(GL_DEPTH_TEST);
-
-			glViewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
-			glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-			glClear(GL_DEPTH_BUFFER_BIT);
-			glActiveTexture(GL_TEXTURE0);
-
-			if (model != nullptr)
-			{
-				model->Update();
-				model->RenderAsShadowmap(*lights[0], lightSpaceMatrix);
-			}
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-			// reset viewport
-			glViewport(0, 0, windowSize.x, windowSize.y);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		}
-
-
-		// Rendering to the screen
-		fb->Use();
-		fb->Clear(glm::vec4(aLightColor[0] / 2.0f, aLightColor[1] / 2.0f, aLightColor[2] / 2.0f, 1.0f));
-
+		// Set the 'ambientColor' vec3 uniform
 		shader->Use();
 		shader->SetVec3("ambientColor", glm::vec3(aLightColor[0], aLightColor[1], aLightColor[2]));
-		shader->SetMatrix4("lightSpaceMatrix", lightSpaceMatrix);
-
-		if (shadows)
-			shader->SetInt("shadows", 1);
-		else
-			shader->SetInt("shadows", 0);
-
-		shader->SetInt("shadowMap", 3);
-		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
+		
+		// Bind the framebuffer
+		fb->Use();
+		fb->Clear(glm::vec3(aLightColor[0] / 2.0f, aLightColor[1] / 2.0f, aLightColor[2] / 2.0f));
 
 		// Rendering
-		for (int i = 0; i < MAXLIGHTS; i++)
-			lights[i]->UseOn(*shader, i);
-
-		//glActiveTexture(GL_TEXTURE0);
+		for (int i=0; i<MAXLIGHTS; i++)
+			lights[i]->UseOn(shader, i);
 
 		if (model != nullptr)
 		{
 			model->Update();
-			model->Render(*camera);
+			model->Render(camera);
 		}
 
+		// Showing the framebuffer
 		fb->Display();
+
+		// Rendering UI
 		DrawImGui();
 
 		// Polling events and swapping the buffers
@@ -179,8 +109,8 @@ namespace Application
 
 		delete window;
 		delete camera;
-		delete albe_texture;
-		delete spec_texture;
+		delete albedoTexture;
+		delete specularTexture;
 		delete shader;
 		delete material;
 		delete model;
@@ -191,9 +121,7 @@ namespace Application
 		glfwTerminate();
 	}
 
-	bool isRunning() { return !glfwWindowShouldClose(window); }
-
-	void processInput(GLFWwindow* window, Camera& cam, double& delta_time)
+	void ProcessWindowInput()
 	{
 		// Mouse position one frame before
 		double temp_mouse_x = mouse_x;
@@ -212,25 +140,25 @@ namespace Application
 		{
 			// Forward / Backward
 			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-				cam.Move(glm::vec3(0.0f, 0.0f, 1.0f * delta_time));
+				camera->Move(glm::vec3(0.0f, 0.0f, 1.0f * deltaTime));
 			else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-				cam.Move(glm::vec3(0.0f, 0.0f, -1.0f * delta_time));
+				camera->Move(glm::vec3(0.0f, 0.0f, -1.0f * deltaTime));
 
 			// Left / Right
 			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-				cam.Move(glm::vec3(-1.0f * delta_time, 0.0f, 0.0f));
+				camera->Move(glm::vec3(-1.0f * deltaTime, 0.0f, 0.0f));
 			else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-				cam.Move(glm::vec3(1.0f * delta_time, 0.0f, 0.0f));
+				camera->Move(glm::vec3(1.0f * deltaTime, 0.0f, 0.0f));
 
 			// Up / Down
 			if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-				cam.Move(glm::vec3(0.0f, 1.0f * delta_time, 0.0f));
+				camera->Move(glm::vec3(0.0f, 1.0f * deltaTime, 0.0f));
 			else if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-				cam.Move(glm::vec3(0.0f, -1.0f * delta_time, 0.0f));
+				camera->Move(glm::vec3(0.0f, -1.0f * deltaTime, 0.0f));
 
 			// Camera Rotation
 			if (delta_magnitude > 0)
-				cam.Rotate(-delta_x / 10, delta_y / 10);
+				camera->Rotate(-delta_x / 10, delta_y / 10);
 		}
 	}
 
@@ -294,37 +222,30 @@ namespace Application
 
 				ImGui::Spacing();
 
-				/*
-				static bool normalTex;
-				ImGui::Checkbox("Normal Texture", &normalTex);
-				if (normalTex)
-					ImGui::InputText("Normal Texture Path", normalpath, IM_ARRAYSIZE(normalpath));
-				*/
-
 				if (ImGui::Button("(Re)Load the Model and Textures"))
 				{
 					std::cout << '\n';
 					cl::Log("> Loading Begins\n", cl::Level::Info);
 					cl::BenchmarkBegin("Main Loading");
 
-					delete albe_texture;
-					delete spec_texture;
+					delete albedoTexture;
+					delete specularTexture;
 					delete model;
 
 					if (albedoTex)
-						albe_texture = new Texture("OBJs/" + std::string(albedopath));
+						albedoTexture = new Texture("OBJs/" + std::string(albedopath));
 					else
-						albe_texture = new Texture("OBJs/NoTextureWhite.jpg");
+						albedoTexture = new Texture("OBJs/NoTextureWhite.jpg");
 
 					if (specularTex)
-						spec_texture = new Texture("OBJs/" + std::string(specularpath));
+						specularTexture = new Texture("OBJs/" + std::string(specularpath));
 					else
-						spec_texture = new Texture("OBJs/NoTextureWhite.jpg");
+						specularTexture = new Texture("OBJs/NoTextureWhite.jpg");
 
 
-					material = new Material(shader, albe_texture, spec_texture);
+					material = new Material(shader, albedoTexture, specularTexture);
 
-					if(modelpath != "")
+					if (modelpath != "")
 						model = new Model("OBJs/" + std::string(modelpath), material);
 
 					double loadTime = cl::BenchmarkStop("Main Loading");
@@ -344,9 +265,9 @@ namespace Application
 			{
 				if (model != nullptr)
 				{
-					//ImGui::InputFloat3("Model Position", modelPosition);
 					ImGui::InputFloat3("Model Rotation", modelRotation);
-					ImGui::InputFloat3("Model Scale", modelScale);
+					ImGui::InputFloat3("Model Scale"   , modelScale);
+					ImGui::ColorEdit3( "Model Color"   , modelColor);
 
 					ImGui::Spacing();
 
@@ -396,19 +317,16 @@ namespace Application
 				}
 
 				ImGui::SliderFloat("FOV", &camera->fov, camera->minFov, camera->maxFov);
-				
+
 
 				static float gamma = 2.0f;
 				if (ImGui::SliderFloat("Gamma", &gamma, 0, 4))
-				{
-					fb->shaderPtr->SetFloat("gamma", gamma);
-				}
+					fb->gamma = gamma;
 
 				static float exposure = 1.0f;
 				if (ImGui::SliderFloat("Exposure", &exposure, 0, 5))
-				{
-					fb->shaderPtr->SetFloat("exposure", exposure);
-				}
+					fb->exposure = exposure;
+				
 
 				ImGui::TreePop();
 			}
@@ -425,7 +343,15 @@ namespace Application
 				ImGui::Separator();
 				ImGui::Spacing();
 
-				ImGui::Checkbox("Shadows", &shadows);
+				static bool shadows = true;
+				if (ImGui::Checkbox("Shadows", &shadows))
+				{
+					if (shadows)
+						Shadowmapper::EnableShadows();
+					else
+						Shadowmapper::DisableShadows();
+				}
+
 
 				ImGui::Spacing();
 				ImGui::Separator();
@@ -466,16 +392,6 @@ namespace Application
 							static float hdir[MAXLIGHTS];
 							static float vdir[MAXLIGHTS];
 
-							/*
-							static bool vinitialized = false;
-							if(!vinitialized)
-								for (auto& _vdir : vdir)
-								{
-									_vdir = 1.57079f;
-									vinitialized = true;
-								}
-							*/
-
 							static bool hinitialized = false;
 							if (!hinitialized)
 								for (auto& _hdir : hdir)
@@ -485,9 +401,9 @@ namespace Application
 								}
 
 							ImGui::SliderAngle("Horizontal Direction", &hdir[i], 0.0f, 360.0f);
-							ImGui::SliderAngle("Vertical Direction", &vdir[i], -90.0f, 90.0f);
+							ImGui::SliderAngle("Vertical Direction", &vdir[i], -89.0f, 89.0f);
 
-							float height = 1 - abs(sin(vdir[i]));
+							float height = 1.0f - abs(sin(vdir[i]));
 							lights[i]->direction = glm::vec3(cos(hdir[i]) * height, sin(vdir[i]), sin(hdir[i]) * height);
 
 							static float col[MAXLIGHTS][3];
@@ -536,7 +452,7 @@ namespace Application
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
 
-	void InitImGui(GLFWwindow* target_window)
+	void InitImGui()
 	{
 		// Setting up the ImGui
 		IMGUI_CHECKVERSION();
@@ -544,13 +460,13 @@ namespace Application
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 
 		// Setup Platform/Renderer backends
-		ImGui_ImplGlfw_InitForOpenGL(target_window, true);
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
 
 		ImGui::StyleColorsDark();
 	}
 
-	GLFWwindow* InitGL()
+	void InitGL()
 	{
 		glfwInit();
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -558,7 +474,7 @@ namespace Application
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_SAMPLES, 4);
 
-		GLFWwindow* window = glfwCreateWindow(windowSize.x, windowSize.y, "Model Inspector", NULL, NULL);
+		window = glfwCreateWindow(windowSize.x, windowSize.y, "Model Inspector", NULL, NULL);
 		if (window == NULL)
 		{
 			std::cout << "Failed to create GLFW window!" << std::endl;
@@ -576,15 +492,12 @@ namespace Application
 		glEnable(GL_BLEND);
 		glEnable(GL_DEPTH_TEST);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		
-		// Anti-Aliasing
-		//glEnable(GL_MULTISAMPLE);
 
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-		return window;
 	}
+
+	bool isRunning() { return !glfwWindowShouldClose(window); }
 }

@@ -16,5 +16,5 @@ public:
 	bool active = true;
 
 	DirLight(glm::vec3 spawnDirection = glm::vec3(0, 0, 1));
-	void UseOn(Shader& shader, int lightIndex);
+	void UseOn(Shader* shader, int lightIndex);
 };
