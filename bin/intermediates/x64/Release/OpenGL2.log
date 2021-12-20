@@ -1,0 +1,15 @@
+﻿  Application.cpp
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared\minwindef.h(130,1): warning C4005: 'APIENTRY': macro redefinition
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\include\GLFW\include\glfw3.h(123): message : see previous definition of 'APIENTRY'
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\Application.cpp(110,16): warning C4150: deletion of pointer to incomplete type 'GLFWwindow'; no destructor called
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\include\ImGui\imgui_impl_glfw.h(23): message : see declaration of 'GLFWwindow'
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\Application.cpp(136,25): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\Application.cpp(161,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\Application.cpp(161,29): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\Application.cpp(172,31): warning C4244: '+=': conversion from 'double' to 'float', possible loss of data
+  Generating code
+  1 of 2321 functions (<0.1%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    32 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  OpenGL2.vcxproj -> D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\bin\x64\Release\OpenGL2.exe

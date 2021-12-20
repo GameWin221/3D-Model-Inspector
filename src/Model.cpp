@@ -75,9 +75,15 @@ void Model::Render(Camera* target_camera)
 	int windowWidth, windowHeight;
 
 	if (this->material->wireframe)
+	{
+		glDisable(GL_CULL_FACE);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
 	else
+	{
+		glEnable(GL_CULL_FACE);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
 
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
 
@@ -108,7 +114,24 @@ void Model::Render(Camera* target_camera)
 	glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
 
-	glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
+	if (this->material->wireframeOnSurface && this->material->wireframe)
+	{
+		glEnable(GL_CULL_FACE);
+
+		this->material->shader->SetBool("material.wireframe", 0);
+
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
+
+		this->material->shader->SetBool("material.wireframe", 1);
+
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
+	}
+	else
+		glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
+
+
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 

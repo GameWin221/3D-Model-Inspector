@@ -247,11 +247,13 @@ namespace Application
 
 					if (modelpath != "")
 						model = new Model("OBJs/" + std::string(modelpath), material);
+					else
+						model = nullptr;
 
 					double loadTime = cl::BenchmarkStop("Main Loading");
 					cl::BenchmarkStopAll();
 
-					cl::Log("Loading Finished - It took " + std::to_string(loadTime * 1000) + " milliseconds\n", cl::Level::Success);
+					cl::Log("> Loading Finished - It took " + std::to_string(loadTime * 1000) + " milliseconds\n", cl::Level::Success);
 				}
 
 				ImGui::TreePop();
@@ -261,7 +263,7 @@ namespace Application
 			ImGui::Separator();
 			ImGui::Spacing();
 
-			if (ImGui::TreeNode("Model Info"))
+			if (ImGui::TreeNode("Model Settings"))
 			{
 				if (model != nullptr)
 				{
@@ -270,20 +272,6 @@ namespace Application
 					ImGui::ColorEdit3( "Model Color"   , modelColor);
 
 					ImGui::Spacing();
-
-					if (ImGui::Checkbox("Wireframe Mode", &material->wireframe))
-					{
-						if (material->wireframe)
-						{
-							glDisable(GL_CULL_FACE);
-							glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-						}
-						else
-						{
-							glEnable(GL_CULL_FACE);
-							glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-						}
-					}
 
 					ImGui::SliderFloat("Shininess", &material->shininess, 1, 256);
 					ImGui::SliderFloat("Specular", &material->specular, 0, 3);
@@ -298,7 +286,22 @@ namespace Application
 			ImGui::Separator();
 			ImGui::Spacing();
 
-			if (ImGui::TreeNode("Camera Info"))
+			if (ImGui::TreeNode("Model Debug Settings"))
+			{
+				ImGui::Checkbox("Wireframe Mode", &material->wireframe);
+
+				if (material->wireframe)
+					ImGui::Checkbox("Wireframe - On top of the mesh", &material->wireframeOnSurface);
+			
+
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::Spacing();
+
+			if (ImGui::TreeNode("Camera Settings"))
 			{
 				ImGui::Checkbox("Orbital Cam", &camera->orbital);
 				if (camera->orbital)
@@ -311,21 +314,16 @@ namespace Application
 					ImGui::SliderFloat("Speed", &camera->speed, 1, 300);
 
 					if (ImGui::Button("Go to (0, 0 ,0)"))
-					{
 						camera->position = glm::vec3(0, 0, 0);
-					}
+					
 				}
 
 				ImGui::SliderFloat("FOV", &camera->fov, camera->minFov, camera->maxFov);
 
+				ImGui::SliderFloat("Gamma", &fb->gamma, 0, 4);
 
-				static float gamma = 2.0f;
-				if (ImGui::SliderFloat("Gamma", &gamma, 0, 4))
-					fb->gamma = gamma;
+				ImGui::SliderFloat("Exposure", &fb->exposure, 0, 5);
 
-				static float exposure = 1.0f;
-				if (ImGui::SliderFloat("Exposure", &exposure, 0, 5))
-					fb->exposure = exposure;
 				
 
 				ImGui::TreePop();

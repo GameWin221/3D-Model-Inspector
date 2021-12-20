@@ -1,0 +1,7 @@
+﻿  main.cpp
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\main.cpp(120,19): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\main.cpp(168,15): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\main.cpp(182,24): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\main.cpp(207,38): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\src\main.cpp(207,24): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+  OpenGL2.vcxproj -> D:\Projekty\Programowanie\C++\OpenGL\OpenGLSolo\bin\x64\Debug\OpenGL2.exe

@@ -28,6 +28,7 @@ struct Material
     glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
 
     bool wireframe = false;
+    bool wireframeOnSurface = false;
 
     float shininess = 20;
     float specular = 1;

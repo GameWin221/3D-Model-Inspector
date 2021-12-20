@@ -93,22 +93,21 @@ void main()
 	vec3 result;
 	if(!material.wireframe)
 	{
-		// ambient
-		vec3 ambient = ambientColor * texture(material.diffuseTex, fTexCoord).rgb;
+		// Ambient Light
+		vec3 ambient = material.color * ambientColor * texture(material.diffuseTex, fTexCoord).rgb;
 
-		// Diffuse Lighting
 		vec3 norm = normalize(fNormal);
 		vec3 viewDir = normalize(viewPos - fPos);
 
 		result = ambient;
 
-		// Multishadow support trzeba dodac
+		// Diffuse, Specular light and Shadowmapping
 		for(int i = 0; i<MAXLIGHTS; i++)
 			result += CalculateLight(dirLights[i], i, norm, viewDir);
 	}
 	else
 	{
-		result = vec3(0.0, 0.0, 1.0);
+		result = vec3(0.0, 0.9, 1.0);
 	}
 
 	FragColor = vec4(result, 1.0);
