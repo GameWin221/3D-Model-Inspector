@@ -89,7 +89,6 @@ vec3 CalculateLight(DirLight dirLight, int index, vec3 fNormal, vec3 viewDir)
 
 void main()
 {
-	
 	vec3 result;
 	if(!material.wireframe)
 	{
@@ -107,7 +106,8 @@ void main()
 	}
 	else
 	{
-		result = vec3(0.0, 0.9, 1.0);
+		//result = vec3(0.0, 0.9, 1.0);
+		result = vec3(0.0);
 	}
 
 	FragColor = vec4(result, 1.0);

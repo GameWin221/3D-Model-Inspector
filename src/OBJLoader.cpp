@@ -1,6 +1,6 @@
 #include "OBJLoader.h"
 
-bool ExtractFromOBJ(std::string path, std::vector<Vertex> &vertices, std::vector<unsigned int>& indices)
+bool ExtractFromOBJ(std::string path, std::vector<Vertex> &vertices, std::vector<unsigned int>& indices, int& trisCount, int& vertCount)
 {
 	std::ifstream file(path);
 
@@ -46,6 +46,8 @@ bool ExtractFromOBJ(std::string path, std::vector<Vertex> &vertices, std::vector
 			// Getting vertex positions
 			if (header == "v")
 			{
+				vertCount++;
+
 				has_position_indices = true;
 
 				glm::vec3 pos;
@@ -104,6 +106,8 @@ bool ExtractFromOBJ(std::string path, std::vector<Vertex> &vertices, std::vector
 			// Getting the indices
 			else if (header == "f")
 			{
+				trisCount++;
+
 				// Array 'v' is an array of 3 triangles
 				std::string tris[3];
 

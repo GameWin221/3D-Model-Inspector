@@ -16,5 +16,5 @@
 
 #include "Vertex.h"
 
-bool ExtractFromOBJ(std::string path, std::vector<Vertex> &vertices, std::vector<unsigned int>& indices);
+bool ExtractFromOBJ(std::string path, std::vector<Vertex> &vertices, std::vector<unsigned int>& indices, int& trisCount, int& vertCount);
 #endif

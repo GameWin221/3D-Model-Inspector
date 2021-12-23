@@ -267,32 +267,55 @@ namespace Application
 			{
 				if (model != nullptr)
 				{
-					ImGui::InputFloat3("Model Rotation", modelRotation);
-					ImGui::InputFloat3("Model Scale"   , modelScale);
-					ImGui::ColorEdit3( "Model Color"   , modelColor);
+					if (model->vertCount > 0)
+					{
+						std::stringstream a;
+						a << "Vertices: " << model->vertCount;
+						ImGui::Text(a.str().c_str());
 
-					ImGui::Spacing();
+						std::stringstream b;
+						b << "Triangles: " << model->triCount;
+						ImGui::Text(b.str().c_str());
+						ImGui::TreePop();
 
-					ImGui::SliderFloat("Shininess", &material->shininess, 1, 256);
-					ImGui::SliderFloat("Specular", &material->specular, 0, 3);
+						ImGui::Spacing();
+						ImGui::Separator();
+						ImGui::Spacing();
+
+						ImGui::InputFloat3("Model Rotation", modelRotation);
+						ImGui::InputFloat3("Model Scale", modelScale);
+						ImGui::ColorEdit3("Model Color", modelColor);
+
+						ImGui::Spacing();
+
+						ImGui::SliderFloat("Shininess", &material->shininess, 1, 256);
+						ImGui::SliderFloat("Specular", &material->specular, 0, 3);
+					}
+					else
+						ImGui::Text("No model loaded!");
 				}
 				else
 					ImGui::Text("No model loaded!");
-
-				ImGui::TreePop();
 			}
 
 			ImGui::Spacing();
 			ImGui::Separator();
 			ImGui::Spacing();
 
-			if (ImGui::TreeNode("Model Debug Settings"))
+			if (ImGui::TreeNode("Rendering Debug Settings"))
 			{
 				ImGui::Checkbox("Wireframe Mode", &material->wireframe);
+		
+				ImGui::Spacing();
 
-				if (material->wireframe)
-					ImGui::Checkbox("Wireframe - On top of the mesh", &material->wireframeOnSurface);
-			
+				static bool shadows = true;
+				if (ImGui::Checkbox("Shadows", &shadows))
+				{
+					if (shadows)
+						Shadowmapper::EnableShadows();
+					else
+						Shadowmapper::DisableShadows();
+				}
 
 				ImGui::TreePop();
 			}
@@ -336,20 +359,6 @@ namespace Application
 			if (ImGui::TreeNode("Lights"))
 			{
 				ImGui::ColorEdit3("Ambient Color", aLightColor);
-
-				ImGui::Spacing();
-				ImGui::Separator();
-				ImGui::Spacing();
-
-				static bool shadows = true;
-				if (ImGui::Checkbox("Shadows", &shadows))
-				{
-					if (shadows)
-						Shadowmapper::EnableShadows();
-					else
-						Shadowmapper::DisableShadows();
-				}
-
 
 				ImGui::Spacing();
 				ImGui::Separator();

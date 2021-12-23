@@ -37,8 +37,9 @@ public:
 
 	Material* material;
 
-private:
+	int vertCount, triCount;
 
+private:
 	GLuint VBO, VAO, EBO;
 
 	std::vector<Vertex> vertices;

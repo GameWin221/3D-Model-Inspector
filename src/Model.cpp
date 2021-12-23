@@ -7,7 +7,7 @@ Model::Model(std::string path, Material* _material)
 	if (depthShader == nullptr)
 		depthShader = new Shader("Shaders/shadow_mapping_vertex.glsl", "Shaders/shadow_mapping_fragment.glsl");
 
-	ExtractFromOBJ(path, this->vertices, this->indices);
+	ExtractFromOBJ(path, this->vertices, this->indices, this->triCount, this->vertCount);
 
 	this->material = _material;
 
@@ -74,17 +74,6 @@ void Model::Render(Camera* target_camera)
 {
 	int windowWidth, windowHeight;
 
-	if (this->material->wireframe)
-	{
-		glDisable(GL_CULL_FACE);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	}
-	else
-	{
-		glEnable(GL_CULL_FACE);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	}
-
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
 
 	this->material->shader->Use();
@@ -114,7 +103,7 @@ void Model::Render(Camera* target_camera)
 	glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
 
-	if (this->material->wireframeOnSurface && this->material->wireframe)
+	if (this->material->wireframe)
 	{
 		glEnable(GL_CULL_FACE);
 
@@ -125,6 +114,7 @@ void Model::Render(Camera* target_camera)
 
 		this->material->shader->SetBool("material.wireframe", 1);
 
+		glLineWidth(1.5f);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
 	}
