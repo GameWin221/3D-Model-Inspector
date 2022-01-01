@@ -183,26 +183,28 @@ namespace Application
 		fb->Resize(glm::uvec2(width, height));
 	}
 
-	void SaveLights(std::string saveName)
+	void SaveLights(std::string saveName, std::array<float, MAXLIGHTS>& hDirArray, std::array<float, MAXLIGHTS>& vDirArray)
 	{
 		std::ofstream file(saveName + ".lights");
 
 		file << MAXLIGHTS << '\n';
 		file << activatedLights << '\n';
 
+		int i = 0;
 		for (const auto& l : lights)
 		{
 			file << "Light\n";
 			file << l->active << '\n';
 			file << l->color.r << " " << l->color.g << " " << l->color.b << '\n';
-			file << l->direction.x << " " << l->direction.y << " " << l->direction.z << '\n';
+			file << hDirArray[i] << " " << vDirArray[i] << '\n';
 			file << l->intensity << '\n';
+			i++;
 		}
 
 		file.close();
 	}
 
-	void LoadLights(std::string saveName)
+	void LoadLights(std::string saveName, std::array<float, MAXLIGHTS>& hDirArray, std::array<float, MAXLIGHTS>& vDirArray)
 	{
 		std::ifstream file(saveName + ".lights");
 
@@ -248,17 +250,13 @@ namespace Application
 						std::istringstream ssDirection(line);
 
 						std::string direction = "";
-						// X
+						// hDir
 						ssDirection >> direction;
-						lights[lightIndex]->direction.x = std::stof(direction);
+						hDirArray[lightIndex] = std::stof(direction);
 
-						// Y
+						// vDir
 						ssDirection >> direction;
-						lights[lightIndex]->direction.y = std::stof(direction);
-
-						// Z
-						ssDirection >> direction;
-						lights[lightIndex]->direction.z = std::stof(direction);
+						vDirArray[lightIndex] = std::stof(direction);
 
 					// DirLight.intensity
 						std::getline(file, line);
@@ -445,20 +443,23 @@ namespace Application
 
 		if (ImGui::TreeNode("Lights"))
 		{
+			static std::array<float, MAXLIGHTS> hdir;
+			static std::array<float, MAXLIGHTS> vdir;
+			static float col[MAXLIGHTS][3];
+			static char saveFile[40] = "lightpreset";
+
 			ImGui::ColorEdit3("Ambient Color", aLightColor);
 
 			ImGui::Spacing();
 			ImGui::Separator();
 			ImGui::Spacing();
 
+			ImGui::InputText("Save file name", saveFile, 40);
 			if (ImGui::Button("Save current lights"))
-			{
-				SaveLights("Test");
-			}
+				SaveLights(saveFile, hdir, vdir);
+
 			if (ImGui::Button("Load lights"))
-			{
-				LoadLights("Test");
-			}
+				LoadLights(saveFile, hdir, vdir);
 
 			ImGui::Spacing();
 			ImGui::Separator();
@@ -496,9 +497,6 @@ namespace Application
 						{
 							ImGui::SliderFloat("Intensity", &lights[i]->intensity, 0, 2);
 
-							static float hdir[MAXLIGHTS];
-							static float vdir[MAXLIGHTS];
-
 							static bool hinitialized = false;
 							if (!hinitialized)
 								for (auto& _hdir : hdir)
@@ -513,7 +511,6 @@ namespace Application
 							float height = 1.0f - abs(sin(vdir[i]));
 							lights[i]->direction = glm::vec3(cos(hdir[i]) * height, sin(vdir[i]), sin(hdir[i]) * height);
 
-							static float col[MAXLIGHTS][3];
 							col[i][0] = lights[i]->color.x;
 							col[i][1] = lights[i]->color.y;
 							col[i][2] = lights[i]->color.z;

@@ -47,8 +47,8 @@ namespace Application
 	extern void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 	extern void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
 
-	extern void LoadLights(std::string saveName);
-	extern void SaveLights(std::string saveName);
+	extern void LoadLights(std::string saveName, std::array<float, MAXLIGHTS>& hDirArray, std::array<float, MAXLIGHTS>& vDirArray);
+	extern void SaveLights(std::string saveName, std::array<float, MAXLIGHTS>& hDirArray, std::array<float, MAXLIGHTS>& vDirArray);
 
 	extern void DrawImGui();
 	extern void InitImGui();
