@@ -24,6 +24,7 @@
 #include <iostream>
 #include <string>
 #include <array>
+#include <fstream>
 
 // Header Files
 #include "Shader.h"
@@ -45,6 +46,9 @@ namespace Application
 	extern void ProcessWindowInput();
 	extern void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 	extern void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
+
+	extern void LoadLights(std::string saveName);
+	extern void SaveLights(std::string saveName);
 
 	extern void DrawImGui();
 	extern void InitImGui();

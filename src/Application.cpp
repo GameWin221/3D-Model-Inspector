@@ -183,6 +183,97 @@ namespace Application
 		fb->Resize(glm::uvec2(width, height));
 	}
 
+	void SaveLights(std::string saveName)
+	{
+		std::ofstream file(saveName + ".lights");
+
+		file << MAXLIGHTS << '\n';
+		file << activatedLights << '\n';
+
+		for (const auto& l : lights)
+		{
+			file << "Light\n";
+			file << l->active << '\n';
+			file << l->color.r << " " << l->color.g << " " << l->color.b << '\n';
+			file << l->direction.x << " " << l->direction.y << " " << l->direction.z << '\n';
+			file << l->intensity << '\n';
+		}
+
+		file.close();
+	}
+
+	void LoadLights(std::string saveName)
+	{
+		std::ifstream file(saveName + ".lights");
+
+		std::string line = "";
+
+		// Check the MAXLIGHTS variable
+		std::getline(file, line);
+		if (std::stoi(line) == MAXLIGHTS)
+		{
+			// 'activatedLights' variable
+			std::getline(file, line);
+			activatedLights = std::stoi(line);
+
+			// Iterating through all of the saved lights
+			int lightIndex = 0;
+			while (std::getline(file, line))
+			{
+				if (line == "Light")
+				{
+					// DirLight.active
+						std::getline(file, line);
+						lights[lightIndex]->active = (bool)std::stoi(line);
+				
+					// DirLight.color
+						std::getline(file, line);
+						std::istringstream ssColor(line);
+
+						std::string color;
+						// Red
+						ssColor >> color;
+						lights[lightIndex]->color.r = std::stof(color);
+
+						// Green
+						ssColor >> color;
+						lights[lightIndex]->color.g = std::stof(color);
+
+						// Blue
+						ssColor >> color;
+						lights[lightIndex]->color.b = std::stof(color);
+
+					// DirLight.direction
+						std::getline(file, line);
+						std::istringstream ssDirection(line);
+
+						std::string direction = "";
+						// X
+						ssDirection >> direction;
+						lights[lightIndex]->direction.x = std::stof(direction);
+
+						// Y
+						ssDirection >> direction;
+						lights[lightIndex]->direction.y = std::stof(direction);
+
+						// Z
+						ssDirection >> direction;
+						lights[lightIndex]->direction.z = std::stof(direction);
+
+					// DirLight.intensity
+						std::getline(file, line);
+						lights[lightIndex]->intensity = std::stof(line);
+
+					lightIndex++;
+				}
+			}
+		}
+		else
+			cl::Log("Failed to load \"" + saveName + ".lights\"! Saved 'MAXLIGHTS' differs from the running instance 'MAXLIGHTS'\n", cl::Error);
+
+		file.close();
+	}
+
 	void DrawImGui()
 	{
 		// ImGui creating new frame
@@ -191,202 +282,211 @@ namespace Application
 		ImGui::NewFrame();
 
 		// ImGui window
+		static char modelpath[80] = "";
+		static char albedopath[80] = "";
+		static char specularpath[80] = "";
+		//static char normalpath[80] = "";
+
+		ImGui::Begin("Inspector");
+
+		if (ImGui::TreeNode("Model Loader"))
 		{
-			static float f = 0.0f;
-			static bool orbital;
-			static char modelpath[80] = "";
+			ImGui::Text("Default Path: \"OBJs/[further_path]\"");
+			ImGui::InputText(".OBJ Path", modelpath, IM_ARRAYSIZE(modelpath));
+			ImGui::Spacing();
 
-			static char albedopath[80] = "";
-			static char specularpath[80] = "";
-			static char normalpath[80] = "";
+			static bool albedoTex;
+			ImGui::Checkbox("Albedo Texture", &albedoTex);
+			if (albedoTex)
+				ImGui::InputText("Albedo Texture Path", albedopath, IM_ARRAYSIZE(albedopath));
 
-			ImGui::Begin("Inspector");
+			ImGui::Spacing();
 
-			if (ImGui::TreeNode("Model Loader"))
+			static bool specularTex;
+			ImGui::Checkbox("Specular Texture", &specularTex);
+			if (specularTex)
+				ImGui::InputText("Specular Texture Path", specularpath, IM_ARRAYSIZE(specularpath));
+
+			ImGui::Spacing();
+
+			if (ImGui::Button("(Re)Load the Model and Textures"))
 			{
-				ImGui::Text("Default Path: \"OBJs/[further_path]\"");
-				ImGui::InputText(".OBJ Path", modelpath, IM_ARRAYSIZE(modelpath));
-				ImGui::Spacing();
+				std::cout << '\n';
+				cl::Log("> Loading Begins\n", cl::Level::Info);
+				cl::BenchmarkBegin("Main Loading");
 
-				static bool albedoTex;
-				ImGui::Checkbox("Albedo Texture", &albedoTex);
+				delete albedoTexture;
+				delete specularTexture;
+				delete model;
+
 				if (albedoTex)
-					ImGui::InputText("Albedo Texture Path", albedopath, IM_ARRAYSIZE(albedopath));
+					albedoTexture = new Texture("OBJs/" + std::string(albedopath));
+				else
+					albedoTexture = new Texture("OBJs/NoTextureWhite.jpg");
 
-				ImGui::Spacing();
-
-				static bool specularTex;
-				ImGui::Checkbox("Specular Texture", &specularTex);
 				if (specularTex)
-					ImGui::InputText("Specular Texture Path", specularpath, IM_ARRAYSIZE(specularpath));
-
-				ImGui::Spacing();
-
-				if (ImGui::Button("(Re)Load the Model and Textures"))
-				{
-					std::cout << '\n';
-					cl::Log("> Loading Begins\n", cl::Level::Info);
-					cl::BenchmarkBegin("Main Loading");
-
-					delete albedoTexture;
-					delete specularTexture;
-					delete model;
-
-					if (albedoTex)
-						albedoTexture = new Texture("OBJs/" + std::string(albedopath));
-					else
-						albedoTexture = new Texture("OBJs/NoTextureWhite.jpg");
-
-					if (specularTex)
-						specularTexture = new Texture("OBJs/" + std::string(specularpath));
-					else
-						specularTexture = new Texture("OBJs/NoTextureWhite.jpg");
+					specularTexture = new Texture("OBJs/" + std::string(specularpath));
+				else
+					specularTexture = new Texture("OBJs/NoTextureWhite.jpg");
 
 
-					material = new Material(shader, albedoTexture, specularTexture);
+				material = new Material(shader, albedoTexture, specularTexture);
 
-					if (modelpath != "")
-						model = new Model("OBJs/" + std::string(modelpath), material);
-					else
-						model = nullptr;
+				if (modelpath != "")
+					model = new Model("OBJs/" + std::string(modelpath), material);
+				else
+					model = nullptr;
 
-					double loadTime = cl::BenchmarkStop("Main Loading");
-					cl::BenchmarkStopAll();
+				double loadTime = cl::BenchmarkStop("Main Loading");
+				cl::BenchmarkStopAll();
 
-					cl::Log("> Loading Finished - It took " + std::to_string(loadTime * 1000) + " milliseconds\n", cl::Level::Success);
-				}
-
-				ImGui::TreePop();
+				cl::Log("> Loading Finished - It took " + std::to_string(loadTime * 1000) + " milliseconds\n", cl::Level::Success);
 			}
 
-			ImGui::Spacing();
-			ImGui::Separator();
-			ImGui::Spacing();
+			ImGui::TreePop();
+		}
 
-			if (ImGui::TreeNode("Model Settings"))
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+
+		if (ImGui::TreeNode("Model Settings"))
+		{
+			if (model != nullptr)
 			{
-				if (model != nullptr)
+				if (model->vertCount > 0)
 				{
-					if (model->vertCount > 0)
-					{
-						std::stringstream a;
-						a << "Vertices: " << model->vertCount;
-						ImGui::Text(a.str().c_str());
+					std::stringstream a;
+					a << "Vertices: " << model->vertCount;
+					ImGui::Text(a.str().c_str());
 
-						std::stringstream b;
-						b << "Triangles: " << model->triCount;
-						ImGui::Text(b.str().c_str());
-						ImGui::TreePop();
+					std::stringstream b;
+					b << "Triangles: " << model->triCount;
+					ImGui::Text(b.str().c_str());
+					ImGui::TreePop();
 
-						ImGui::Spacing();
-						ImGui::Separator();
-						ImGui::Spacing();
+					ImGui::Spacing();
+					ImGui::Separator();
+					ImGui::Spacing();
 
-						ImGui::InputFloat3("Model Rotation", modelRotation);
-						ImGui::InputFloat3("Model Scale", modelScale);
-						ImGui::ColorEdit3("Model Color", modelColor);
+					ImGui::InputFloat3("Model Rotation", modelRotation);
+					ImGui::InputFloat3("Model Scale", modelScale);
+					ImGui::ColorEdit3("Model Color", modelColor);
 
-						ImGui::Spacing();
+					ImGui::Spacing();
 
-						ImGui::SliderFloat("Shininess", &material->shininess, 1, 256);
-						ImGui::SliderFloat("Specular", &material->specular, 0, 3);
-					}
-					else
-						ImGui::Text("No model loaded!");
+					ImGui::SliderFloat("Shininess", &material->shininess, 1, 256);
+					ImGui::SliderFloat("Specular", &material->specular, 0, 3);
 				}
 				else
 					ImGui::Text("No model loaded!");
 			}
+			else
+				ImGui::Text("No model loaded!");
+		}
 
-			ImGui::Spacing();
-			ImGui::Separator();
-			ImGui::Spacing();
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
 
-			if (ImGui::TreeNode("Rendering Debug Settings"))
-			{
-				ImGui::Checkbox("Wireframe Mode", &material->wireframe);
+		if (ImGui::TreeNode("Rendering Debug Settings"))
+		{
+			ImGui::Checkbox("Wireframe Mode", &material->wireframe);
 		
-				ImGui::Spacing();
-
-				static bool shadows = true;
-				if (ImGui::Checkbox("Shadows", &shadows))
-				{
-					if (shadows)
-						Shadowmapper::EnableShadows();
-					else
-						Shadowmapper::DisableShadows();
-				}
-
-				ImGui::TreePop();
-			}
-
-			ImGui::Spacing();
-			ImGui::Separator();
 			ImGui::Spacing();
 
-			if (ImGui::TreeNode("Camera Settings"))
+			static bool shadows = true;
+			if (ImGui::Checkbox("Shadows", &shadows))
 			{
-				ImGui::Checkbox("Orbital Cam", &camera->orbital);
-				if (camera->orbital)
-				{
-					if (ImGui::SliderFloat("Distance", &camera->orbitalDistance, 0, 10.0f))
-						camera->UpdateVectors();
-				}
+				if (shadows)
+					Shadowmapper::EnableShadows();
 				else
-				{
-					ImGui::SliderFloat("Speed", &camera->speed, 1, 300);
+					Shadowmapper::DisableShadows();
+			}
 
-					if (ImGui::Button("Go to (0, 0 ,0)"))
-						camera->position = glm::vec3(0, 0, 0);
-					
-				}
+			ImGui::TreePop();
+		}
 
-				ImGui::SliderFloat("FOV", &camera->fov, camera->minFov, camera->maxFov);
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
 
-				ImGui::SliderFloat("Gamma", &fb->gamma, 0, 4);
+		if (ImGui::TreeNode("Camera Settings"))
+		{
+			ImGui::Checkbox("Orbital Cam", &camera->orbital);
+			if (camera->orbital)
+			{
+				if (ImGui::SliderFloat("Distance", &camera->orbitalDistance, 0, 10.0f))
+					camera->UpdateVectors();
+			}
+			else
+			{
+				ImGui::SliderFloat("Speed", &camera->speed, 1, 300);
 
-				ImGui::SliderFloat("Exposure", &fb->exposure, 0, 5);
-
+				if (ImGui::Button("Go to (0, 0 ,0)"))
+					camera->position = glm::vec3(0, 0, 0);
 				
+			}
 
-				ImGui::TreePop();
+			ImGui::SliderFloat("FOV", &camera->fov, camera->minFov, camera->maxFov);
+
+			ImGui::SliderFloat("Gamma", &fb->gamma, 0, 4);
+
+			ImGui::SliderFloat("Exposure", &fb->exposure, 0, 5);
+
+			
+
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+
+		if (ImGui::TreeNode("Lights"))
+		{
+			ImGui::ColorEdit3("Ambient Color", aLightColor);
+
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::Spacing();
+
+			if (ImGui::Button("Save current lights"))
+			{
+				SaveLights("Test");
+			}
+			if (ImGui::Button("Load lights"))
+			{
+				LoadLights("Test");
 			}
 
 			ImGui::Spacing();
 			ImGui::Separator();
 			ImGui::Spacing();
 
-			if (ImGui::TreeNode("Lights"))
+			if (ImGui::Button("Add Light"))
 			{
-				ImGui::ColorEdit3("Ambient Color", aLightColor);
-
-				ImGui::Spacing();
-				ImGui::Separator();
-				ImGui::Spacing();
-
-				if (ImGui::Button("Add Light"))
+				if (activatedLights < MAXLIGHTS)
 				{
-					if (activatedLights < MAXLIGHTS)
-					{
-						activatedLights++;
-						for (int i = 0; i < activatedLights; i++)
-							lights[i]->active = true;
-					}
+					activatedLights++;
+					for (int i = 0; i < activatedLights; i++)
+						lights[i]->active = true;
 				}
-				if (ImGui::Button("Remove Light"))
+			}
+			if (ImGui::Button("Remove Light"))
+			{
+				if (activatedLights > 0)
 				{
-					if (activatedLights > 0)
-					{
-						activatedLights--;
-						for (int i = 0; i < MAXLIGHTS; i++)
-							lights[i]->active = false;
+					activatedLights--;
+					for (int i = 0; i < MAXLIGHTS; i++)
+						lights[i]->active = false;
 
-						for (int i = 0; i < activatedLights; i++)
-							lights[i]->active = true;
-					}
+					for (int i = 0; i < activatedLights; i++)
+						lights[i]->active = true;
 				}
+			}
 
-				for (int i = 0; i < MAXLIGHTS; i++)
+			for (int i = 0; i < MAXLIGHTS; i++)
 				{
 					if (lights[i]->active)
 					{
@@ -430,29 +530,29 @@ namespace Application
 						}
 					}
 				}
-				ImGui::TreePop();
-			}
-			ImGui::Spacing();
-			ImGui::Separator();
-			ImGui::Spacing();
-
-			if (ImGui::Button("Reload Shaders"))
-			{
-				shader->~Shader();
-				shader = new Shader("Shaders/vertex_core_shaded.glsl", "Shaders/fragment_core_shaded.glsl");
-				material->shader = shader;
-
-				fb->ReloadShader();
-			}
-
-			ImGui::Spacing();
-			ImGui::Separator();
-			ImGui::Spacing();
-
-			// Debug info
-			ImGui::Text("Average %.3f ms/frame | (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-			ImGui::End();
+			ImGui::TreePop();
 		}
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+
+		if (ImGui::Button("Reload Shaders"))
+		{
+			shader->~Shader();
+			shader = new Shader("Shaders/vertex_core_shaded.glsl", "Shaders/fragment_core_shaded.glsl");
+			material->shader = shader;
+
+			fb->ReloadShader();
+		}
+
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+
+		// Debug info
+		ImGui::Text("Average %.3f ms/frame | (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::End();
+		
 
 		// Rendering
 		ImGui::Render();
