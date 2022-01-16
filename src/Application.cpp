@@ -208,27 +208,29 @@ namespace Application
 	{
 		std::ifstream file(saveName + ".lights");
 
-		std::string line = "";
-
-		// Check the MAXLIGHTS variable
-		std::getline(file, line);
-		if (std::stoi(line) == MAXLIGHTS)
+		if (file.is_open())
 		{
-			// 'activatedLights' variable
-			std::getline(file, line);
-			activatedLights = std::stoi(line);
+			std::string line = "";
 
-			// Iterating through all of the saved lights
-			int lightIndex = 0;
-			while (std::getline(file, line))
+			// Check the MAXLIGHTS variable
+			std::getline(file, line);
+			if (std::stoi(line) == MAXLIGHTS)
 			{
-				if (line == "Light")
+				// 'activatedLights' variable
+				std::getline(file, line);
+				activatedLights = std::stoi(line);
+
+				// Iterating through all of the saved lights
+				int lightIndex = 0;
+				while (std::getline(file, line))
 				{
-					// DirLight.active
+					if (line == "Light")
+					{
+						// DirLight.active
 						std::getline(file, line);
 						lights[lightIndex]->active = (bool)std::stoi(line);
-				
-					// DirLight.color
+
+						// DirLight.color
 						std::getline(file, line);
 						std::istringstream ssColor(line);
 
@@ -245,7 +247,7 @@ namespace Application
 						ssColor >> color;
 						lights[lightIndex]->color.b = std::stof(color);
 
-					// DirLight.direction
+						// DirLight.direction
 						std::getline(file, line);
 						std::istringstream ssDirection(line);
 
@@ -258,16 +260,23 @@ namespace Application
 						ssDirection >> direction;
 						vDirArray[lightIndex] = std::stof(direction);
 
-					// DirLight.intensity
+						float height = 1.0f - abs(sin(vDirArray[lightIndex]));
+						lights[lightIndex]->direction = glm::vec3(cos(hDirArray[lightIndex]) * height, sin(vDirArray[lightIndex]), sin(hDirArray[lightIndex]) * height);
+
+						// DirLight.intensity
 						std::getline(file, line);
 						lights[lightIndex]->intensity = std::stof(line);
 
-					lightIndex++;
+						lightIndex++;
+					}
 				}
+				cl::Log("Successfully loaded \"" + saveName + ".lights\"!\n", cl::Success);
 			}
+			else
+				cl::Log("Failed to load \"" + saveName + ".lights\"! 'MAXLIGHTS' in the save file differs from the 'MAXLIGHTS' in this instance!\n", cl::Error);
 		}
 		else
-			cl::Log("Failed to load \"" + saveName + ".lights\"! Saved 'MAXLIGHTS' differs from the running instance 'MAXLIGHTS'\n", cl::Error);
+			cl::Log("Failed to load \"" + saveName + ".lights\"! The file doesn't exist!\n", cl::Error);
 
 		file.close();
 	}
@@ -284,6 +293,19 @@ namespace Application
 		static char albedopath[80] = "";
 		static char specularpath[80] = "";
 		//static char normalpath[80] = "";
+
+		static std::array<float, MAXLIGHTS> hdir;
+		static std::array<float, MAXLIGHTS> vdir;
+		static float col[MAXLIGHTS][3];
+		static char saveFile[40] = "lightpreset";
+
+		static bool hinitialized = false;
+		if (!hinitialized)
+			for (auto& _hdir : hdir)
+			{
+				_hdir = 1.57079f;
+				hinitialized = true;
+			}
 
 		ImGui::Begin("Inspector");
 
@@ -443,11 +465,6 @@ namespace Application
 
 		if (ImGui::TreeNode("Lights"))
 		{
-			static std::array<float, MAXLIGHTS> hdir;
-			static std::array<float, MAXLIGHTS> vdir;
-			static float col[MAXLIGHTS][3];
-			static char saveFile[40] = "lightpreset";
-
 			ImGui::ColorEdit3("Ambient Color", aLightColor);
 
 			ImGui::Spacing();
@@ -496,14 +513,6 @@ namespace Application
 						if (ImGui::TreeNode(ss.str().c_str()))
 						{
 							ImGui::SliderFloat("Intensity", &lights[i]->intensity, 0, 2);
-
-							static bool hinitialized = false;
-							if (!hinitialized)
-								for (auto& _hdir : hdir)
-								{
-									_hdir = 1.57079f;
-									hinitialized = true;
-								}
 
 							ImGui::SliderAngle("Horizontal Direction", &hdir[i], 0.0f, 360.0f);
 							ImGui::SliderAngle("Vertical Direction", &vdir[i], -89.0f, 89.0f);
