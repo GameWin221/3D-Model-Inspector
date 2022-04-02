@@ -5,4 +5,6 @@ A project created to learn OpenGL, also my first individual (second ever) app us
 
 
 # Requirements
-Visual Studio 2022 (or newer in the future), the solution file is in the main directory.
+Visual Studio 2022 (or newer in the future)
+
+The CMake version might be made later.
