@@ -1,12 +1,2 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-
-# Executables
-*.exe
-*.out
-*.app
+bin
+.vs

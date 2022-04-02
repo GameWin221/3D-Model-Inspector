@@ -120,7 +120,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)include/GLFW/include;$(SolutionDir)include/GLEW/include;$(SolutionDir)include/GLM/include;$(SolutionDir)include/STB;$(SolutionDir)include/ImGui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include/GLFW/include;$(SolutionDir)include/GLEW/include;$(SolutionDir)include/GLM/include;$(SolutionDir)include/STB;$(SolutionDir)include/ImGui;$(SolutionDir)include/CL</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
